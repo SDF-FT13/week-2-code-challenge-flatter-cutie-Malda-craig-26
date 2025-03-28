@@ -1,83 +1,149 @@
-// Your code here
+const characterBar = document.querySelector("#character-bar");
+let currentCharacter = null;
+const resetBtn = document.querySelector("#reset-btn");
+console.log(resetBtn);
 
-document.addEventListener('DOMContentLoaded', () => {
-    const detailedName = document.getElementById("name");
-    const detailedImage = document.getElementById("image");
-    const voteCount = document.getElementById("vote-count");
-    const votesForm = document.getElementById("votes-form");
-    const resetBtn = document.getElementById("reset-btn");
-    const characterBar = document.getElementById("character-bar");
+async function displayCharacters() {
+  try {
+    const response = await fetch("http://localhost:3000/characters");
+    if (!response.ok) {
+      throw new Error("Failed to fetch data!");
+    }
+    const data = await response.json();
+    characterBar.innerHTML = "";
 
-function fetchCharacters() {
-    fetch('http://localhost:3000/characters')
-    .then(response => response.json())
-    .then(characters => {
-        characterBar.innerHTML = "";
-        characters.forEach(character => {
-            const span = document.createElement('span');
-            span.className = "character";
-            span.textContent = character.name;
-            span.setAttribute("data-id", character.id);
-            span.setAttribute("data-image", character.image);
-            span.addEventListener('click', () => displayCharacterDetails(character));
-            characterBar.appendChild(span);
-        }
-            });
-            })
-            .catch(err => console.error("Error loading characters:", err));
-        
+    data.forEach((character) => {
+      const characterSpan = document.createElement("span");
+      characterSpan.textContent = character.name;
 
-    
-    fetchCharacters();
+      characterSpan.addEventListener("click", () => {
+        displayDetailedCharacter(character);
+      });
 
+      characterBar.appendChild(characterSpan);
+    });
+  } catch (error) {
+    console.log("Error: ", error);
+  }
+}
+displayCharacters();
 
-function displayCharacterDetails(character) {
-    const selectedCharacter = character;
-    detailedName.textContent = character.name;
-    detailedImage.src = character.image;
-    detailedImage.alt = character.name;
-    voteCount.textContent = character.votes;
+const detailedInfo = document.querySelector("#detailed-info");
+const votesInput = document.querySelector("#vote-count");
 
-    votesForm.onsubmit = (e) => {
-        e.preventDefault();
-        const votesToAdd = parseInt(document.getElementById("votes").value) || 0;
-        selectedCharacter.votes += votesToAdd;
-        voteCount.textContent = selectedCharacter.votes;
+function displayDetailedCharacter(character) {
+  currentCharacter = character;
 
-        fetch(`http://localhost:3000/characters/${selectedCharacter.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ votes: selectedCharacter.votes })
-        });
-        votesForm.reset();
-    };
+  const myName = document.querySelector("#name");
+  const img = document.querySelector("#image");
 
-    resetBtn.onclick = () => {
-        selectedCharacter.votes = 0;
-        voteCount.textContent = selectedCharacter.votes;
-
-        fetch(`http://localhost:3000/characters/${selectedCharacter.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ votes: 0 })
-        });
-    };
+  myName.textContent = character.name;
+  img.src = character.image;
+  votesInput.textContent = character.votes;
 }
 
-const characterForm = document.getElementById("character-form");
+const form = document.querySelector("#votes-form");
+const inputValue = document.querySelector("#votes");
+
+form.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const votesAdded = parseInt(inputValue.value, 10);
+  console.log(votesAdded);
+
+  if (currentCharacter) {
+    if (!isNaN(votesAdded)) {
+      currentCharacter.votes += votesAdded;
+
+      fetch(`http://localhost:3000/characters/${currentCharacter.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          votes: currentCharacter.votes,
+        }),
+      })
+        .then((response) => response.json())
+        .then((updatedCharacter) => {
+          console.log(updatedCharacter);
+          const votesCount = document.querySelector("#vote-count");
+          votesCount.textContent = updatedCharacter.votes;
+        })
+        .catch((error) => {
+          console.error("Error updating votes", error);
+        });
+
+      form.reset();
+    }
+  }
+});
+
+resetBtn.addEventListener("click", () => {
+  if (currentCharacter) {
+    console.log(currentCharacter.votes);
+    currentCharacter.votes = 0;
+    votesInput.textContent = currentCharacter.votes;
+    
+    fetch(`http://localhost:3000/characters/${currentCharacter.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        votes: 0,
+      }),
+    })
+    .then(response => response.json())
+    .then(updatedCharacter => {
+      console.log("Reset successful:", updatedCharacter);
+    })
+    .catch(error => {
+      console.error("Error resetting votes", error);
+    });
+  }
+});
+
+const characterForm = document.querySelector("#character-form");
+console.log(characterForm);
 
 characterForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const newName = document.getElementById("name").value.trim();
-    const newImage = document.getElementById("image-url").value.trim();
+  e.preventDefault();
 
-    if (newName && newImage) {
-        const newCharacter = {
-            name: newName,
-            image: newImage,
-            votes: 0,
-        };
-        characterVotes.textContent = selectedCharacter.votes;
-        voteInput.value = "";
-    }
+  console.log("clicked");
+  const nwName = document.querySelector("#new-name").value.trim();
+  const nwImage = document.querySelector("#image-url").value.trim();
+  console.log(nwName);
+  
+  if (nwName && nwImage) {
+    const newCharacter = {
+      name: nwName,  
+      image: nwImage, 
+      votes: 0,
+    };
+    console.log(newCharacter);
+
+   
+    fetch("http://localhost:3000/characters", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(newCharacter),
+    })
+    .then(response => response.json())
+    .then(createdCharacter => {
+      console.log("Character created:", createdCharacter);
+      const characterSpan = document.createElement("span");
+      characterSpan.textContent = createdCharacter.name;
+      characterSpan.addEventListener("click", () => {
+        displayDetailedCharacter(createdCharacter);
+      });
+      characterBar.appendChild(characterSpan);
+      
+      characterForm.reset();
+    })
+    .catch(error => {
+      console.error("Error creating character", error);
+    });
+  }
 });
